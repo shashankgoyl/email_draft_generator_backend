@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: email-generator-api
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn api:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: GROQ_API_KEY
+        sync: false          # set manually in Render dashboard
+      - key: GROQ_MODEL
+        value: llama-3.3-70b-versatile
+      - key: SECRET_KEY
+        generateValue: true  # Render auto-generates
+      - key: ALGORITHM
+        value: HS256
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "1440"
+      - key: ADMIN_SECRET_KEY
+        generateValue: true
+      - key: DB_PATH
+        value: ./email_generator.db
+      - key: EMAIL_FILES_DIR
+        value: ./email_files
+      - key: TIMEZONE
+        value: UTC
+      - key: GOOGLE_CREDENTIALS_PATH
+        value: ./credentials/credentials.json
+      - key: GOOGLE_TOKEN_PATH
+        value: ./credentials/token.json
+      - key: OAUTH_REDIRECT_URI
+        sync: false          # set to https://your-service.onrender.com/gmail/auth-callback

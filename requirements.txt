@@ -1,0 +1,27 @@
+# Core Framework
+fastapi
+uvicorn[standard]
+python-dotenv
+
+# AI / LLM — Groq (free tier: https://console.groq.com)
+langchain-groq
+langchain-core
+langgraph
+langchain
+
+# Gmail API
+google-auth
+google-auth-oauthlib
+google-auth-httplib2
+google-api-python-client
+
+# Utilities
+requests
+python-multipart
+aiofiles
+tzdata
+
+# Auth / Security
+python-jose[cryptography]
+bcrypt
+passlib

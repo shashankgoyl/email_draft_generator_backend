@@ -1,24 +1,17 @@
 """
 gmail_router.py — Gmail OAuth endpoints.
-
-OAuth logic lives in email_provider.py.
-This module only defines the routes that expose that logic via HTTP.
 """
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request
 from auth import get_current_user
 from email_provider import get_gmail_auth_url, complete_gmail_auth
 
 router = APIRouter(prefix="/gmail", tags=["Gmail OAuth"])
 
+
 @router.get("/auth-url")
 async def gmail_auth_url(current_user: dict = Depends(get_current_user)):
-    """Step 1 — Get the Gmail OAuth authorisation URL.
-
-    Open the returned URL in your browser, grant access, and Google will
-    redirect to OAUTH_REDIRECT_URI with a `code` query parameter.
-    That redirect is handled automatically by /gmail/auth-callback.
-    If the redirect fails, copy the `code` and POST it to /gmail/complete-auth."""
+    """Step 1 — Get the Gmail OAuth authorisation URL."""
     try:
         url = get_gmail_auth_url()
         return {
@@ -35,34 +28,39 @@ async def gmail_auth_url(current_user: dict = Depends(get_current_user)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to generate auth URL: {e}")
 
+
 @router.get("/auth-callback")
-async def gmail_auth_callback(code: str):
-    """Step 2 (automatic) — Google redirects here after the user grants access.
+async def gmail_auth_callback(request: Request):
+    """Step 2 (automatic) — Google redirects here after user grants access.
+    Uses Request object to handle all query params Google sends (code, state, scope, iss)."""
+    code  = request.query_params.get("code")
+    error = request.query_params.get("error")
 
-    Exchanges the authorisation code for a token and saves token.json to the
-    credentials volume so it persists across container restarts.
+    if error:
+        raise HTTPException(status_code=400, detail=f"Google OAuth error: {error}")
 
-    Public endpoint — Google's redirect carries no auth header.
-    OAUTH_REDIRECT_URI in docker-compose.yml must point here."""
+    if not code:
+        raise HTTPException(
+            status_code=400,
+            detail="No authorization code in callback. Params received: " + str(dict(request.query_params))
+        )
+
     try:
         complete_gmail_auth(code)
         return {
             "success": True,
-            "message": "Gmail authenticated. token.json saved — you can now fetch emails.",
+            "message": "Gmail authenticated! token.json saved — you can now fetch emails.",
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"OAuth callback failed: {e}")
+
 
 @router.post("/complete-auth")
 async def gmail_complete_auth(
     code: str,
     current_user: dict = Depends(get_current_user),
 ):
-    """Step 2 (manual) — Supply the authorisation code yourself.
-
-    Use this if the automatic redirect is not reachable (e.g. running locally
-    without a public URL). Copy the code= parameter from the redirect URL and
-    post it here."""
+    """Step 2 (manual) — Supply the authorisation code yourself if redirect fails."""
     try:
         complete_gmail_auth(code)
         return {"success": True, "message": "Gmail authenticated. token.json saved."}

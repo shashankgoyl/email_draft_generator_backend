@@ -86,6 +86,16 @@ async def gmail_auth_callback(request: Request):
         raise HTTPException(status_code=500, detail=f"OAuth callback failed: {e}")
 
 
+@router.delete("/token")
+async def delete_gmail_token(current_user: dict = Depends(get_current_user)):
+    """Delete the stored Gmail token.json — forces re-authentication."""
+    from email_provider import TOKEN_PATH
+    import os
+    if os.path.exists(TOKEN_PATH):
+        os.remove(TOKEN_PATH)
+        return {"success": True, "message": "token.json deleted. Re-run Gmail OAuth to reconnect."}
+    return {"success": False, "message": "No token.json found — Gmail was not authenticated."}
+
 @router.post("/complete-auth")
 async def gmail_complete_auth(
     code: str,
